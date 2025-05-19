@@ -2,14 +2,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-// Ensure this path correctly points to your supabaseClient.js file!
 import { supabase } from '../../../supabaseClient'; 
-// Example: import { supabase } from '../../lib/supabaseClient'; 
+import dynamic from 'next/dynamic';
+
+const VenuesMap = dynamic(
+    () => import('../../components/VenuesMap'),
+    {
+        ssr: false,
+    }
+);
+
 
 export default function VenuesPage() {
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
 
   useEffect(() => {
     async function fetchVenues() {
@@ -56,17 +64,21 @@ export default function VenuesPage() {
     return <p>Error loading venues: {error}</p>;
   }
 
-  if (!venues.length) {
-    return <p>No venues found. Add some to your Supabase table!</p>;
-  }
 
   return (
     <div>
       <h1>PintFinder Venues</h1>
 
       <div style={{ marginBottom: '20px' }}>
+        <VenuesMap venues={venues} />
+      </div>
+
+      {venues.length > 0 ? (
+        <>
+
+      <div style={{ marginBottom: '20px' }}>
         <button onClick={() => handleSort('asc')} style={{ marginRight: '10px' }}>Sort Price: Low to High</button>
-        <button onClick={() => handleSort('desc')}>Sort Price: Low to High</button>
+        <button onClick={() => handleSort('desc')}>Sort Price: High to Low</button>
     </div>    
 
       <ul>
@@ -79,6 +91,10 @@ export default function VenuesPage() {
           </li>
         ))}
       </ul>
+      </>
+      ) : (
+        <p style={{ marginTop: '20px' }}>No venues to display in the list.</p>
+      )}
     </div>
   );
 }
