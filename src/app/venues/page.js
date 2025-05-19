@@ -33,6 +33,21 @@ export default function VenuesPage() {
     fetchVenues();
   }, []);
 
+  const handleSort = (sortType) => {
+    const sortedVenues = [...venues].sort((a, b) => {
+        if (a.price_value === null && b.price_value === null) return 0;
+        if (a.price_value === null) return 1;
+        if (b.price_value === null) return -1;
+
+        if (sortType === 'asc') {
+            return a.price_value - b.price_value;
+          } else {
+            return b.price_value - a.price_value;
+          }
+        });
+        setVenues(sortedVenues);
+  };
+
   if (loading) {
     return <p>Loading venues...</p>;
   }
@@ -48,6 +63,12 @@ export default function VenuesPage() {
   return (
     <div>
       <h1>PintFinder Venues</h1>
+
+      <div style={{ marginBottom: '20px' }}>
+        <button onClick={() => handleSort('asc')} style={{ marginRight: '10px' }}>Sort Price: Low to High</button>
+        <button onClick={() => handleSort('desc')}>Sort Price: Low to High</button>
+    </div>    
+
       <ul>
         {venues.map(venue => (
           <li key={venue.id} style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '10px' }}>
