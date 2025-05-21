@@ -3,6 +3,7 @@
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { useEffect, useState } from 'react';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -13,22 +14,50 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function VenuesMap({ venues }) {
-    if (!venues || venues.length === 0) {
-        return <p>No venues to display on map.</p>
-    }
+  //  if (!venues || venues.length === 0) {
+  //   return <p>No venues to display on map.</p>
+    
+  console.log('Venues received by VenuesMap:', venues);
 
     const position = [
         venues[0]?.latitude || -37.840935,
         venues[0]?.longitude || 144.946457,
     ];
-    const zoomLevel = venues.length > 0 ? 13 : 7;
+    const [mapCenter, setMapCenter] = useState(position);
+    const[currentZoom, setCurrentZoom] = useState(venues?.length > 0 ? 13 : 9);
+
+
+    useEffect(() => {
+
+        console.log("Navigator object:", navigator);
+        console.log("Navigator.geolocation object:", navigator.geolocation);
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userLocation = [position.coords.latitude, position.coords.longitude];
+                    setMapCenter(userLocation);
+                    setCurrentZoom(13);
+                    console.log("User Location found:", userLocation);
+                },
+                (error) => {
+                    console.error("Error getting user location:", error.message);
+                }
+            );
+          }  else {
+                console.log("Geolocation is not supported by this browser.");
+            }
+        }, []);
+
+    
 
     return (
         <MapContainer
-            center={position}
-            zoom={zoomLevel}
+            center={mapCenter}
+            zoom={currentZoom}
             scrollWheelZoom={true}
             style={{ height: '500px', width: '100%' }}
+            key={mapCenter.join('_')}
         >
             <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
