@@ -1,29 +1,38 @@
-// src/app/venues/page.js (or app/venues/page.js)
+// src/app/venues/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
-import { supabase } from '../../../supabaseClient'; 
+import { supabase } from '../../../supabaseClient'; // Verify this path
 import dynamic from 'next/dynamic';
+import { useState, useEffect, useCallback } from 'react'; // ADD useCallback HERE
 
+// Dynamically import VenuesMap with SSR turned off
 const VenuesMap = dynamic(
-    () => import('../../components/VenuesMap'),
-    {
-        ssr: false,
-    }
+  () => import('@/components/VenuesMap'), // Verify this path
+  { 
+    ssr: false,
+    loading: () => <p>Loading Map...</p> 
+  }
 );
 
+// Define initial default coordinates (e.g., Melbourne)
+const DEFAULT_LATITUDE = -37.840935;
+const DEFAULT_LONGITUDE = 144.946457;
+const DEFAULT_ZOOM = 9;
+const SELECTED_VENUE_ZOOM = 15; // Zoom level when a venue is selected
 
 export default function VenuesPage() {
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // State for map's center and zoom, managed by VenuesPage
+  const [mapCenter, setMapCenter] = useState([DEFAULT_LATITUDE, DEFAULT_LONGITUDE]);
+  const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
 
   useEffect(() => {
     async function fetchVenues() {
       setLoading(true);
       setError(null);
-
       const { data, error: fetchError } = await supabase
         .from('venues')
         .select('*');
@@ -34,27 +43,59 @@ export default function VenuesPage() {
         setVenues([]);
       } else {
         setVenues(data || []);
+        // Set initial map center based on first venue if venues exist
+        // and if the map hasn't been centered by another action yet (e.g. geolocation)
+        if (data && data.length > 0) {
+          // Check if mapCenter is still the absolute default before overriding
+          if (mapCenter[0] === DEFAULT_LATITUDE && mapCenter[1] === DEFAULT_LONGITUDE) {
+            setMapCenter([data[0].latitude || DEFAULT_LATITUDE, data[0].longitude || DEFAULT_LONGITUDE]);
+            setMapZoom(13); // A bit more zoomed in if there are venues
+          }
+        }
       }
       setLoading(false);
     }
-
     fetchVenues();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps 
+  }, []); // We only want to fetch venues once on mount. mapCenter is managed separately.
+
 
   const handleSort = (sortType) => {
     const sortedVenues = [...venues].sort((a, b) => {
-        if (a.price_value === null && b.price_value === null) return 0;
-        if (a.price_value === null) return 1;
-        if (b.price_value === null) return -1;
-
-        if (sortType === 'asc') {
-            return a.price_value - b.price_value;
-          } else {
-            return b.price_value - a.price_value;
-          }
-        });
-        setVenues(sortedVenues);
+      if (a.price_value === null && b.price_value === null) return 0;
+      if (a.price_value === null) return 1;
+      if (b.price_value === null) return -1;
+      if (sortType === 'asc') {
+          return a.price_value - b.price_value;
+      } else {
+          return b.price_value - a.price_value;
+      }
+    });
+    setVenues(sortedVenues);
   };
+
+  // Handler for when a venue is selected from the list
+  const handleVenueSelect = (venue) => {
+    if (venue.latitude && venue.longitude) {
+      console.log('VenuesPage: handleVenueSelect called for:', venue.name); // Log which venue
+      const newCenter = [venue.latitude, venue.longitude];
+      const newZoom = SELECTED_VENUE_ZOOM;
+      console.log('VenuesPage: Setting mapCenter to:', newCenter, 'and mapZoom to:', newZoom);
+      setMapCenter(newCenter);
+      setMapZoom(newZoom);
+    } else {
+      console.log('VenuesPage: handleVenueSelect called for venue with missing coordinates:', venue.name);
+    }
+  };
+
+  // Handler for when geolocation is successful in VenuesMap
+  const handleGeolocationSuccess = useCallback((coords) => {
+    console.log('VenuesPage: Geolocation success, new coords:', coords);
+    setMapCenter([coords.latitude, coords.longitude]);
+    setMapZoom(13); 
+  }, [setMapCenter, setMapZoom]);
+
+  console.log('VenuesPage rendering. mapCenter:', mapCenter, 'mapZoom:', mapZoom);
 
   if (loading) {
     return <p>Loading venues...</p>;
@@ -64,36 +105,47 @@ export default function VenuesPage() {
     return <p>Error loading venues: {error}</p>;
   }
 
-
   return (
     <div>
       <h1>PintFinder Venues</h1>
 
       <div style={{ marginBottom: '20px' }}>
-        <VenuesMap venues={venues} />
+        <VenuesMap
+          venues={venues}
+          center={mapCenter}
+          zoom={mapZoom}
+          onGeolocationSuccess={handleGeolocationSuccess} 
+        />
       </div>
 
       {venues.length > 0 ? (
         <>
+          <div style={{ marginBottom: '20px' }}>
+            <button onClick={() => handleSort('asc')} style={{ marginRight: '10px' }}>
+              Sort Price: Low to High
+            </button>
+            <button onClick={() => handleSort('desc')}>
+              Sort Price: High to Low
+            </button>
+          </div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => handleSort('asc')} style={{ marginRight: '10px' }}>Sort Price: Low to High</button>
-        <button onClick={() => handleSort('desc')}>Sort Price: High to Low</button>
-    </div>    
-
-      <ul>
-        {venues.map(venue => (
-          <li key={venue.id} style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '10px' }}>
-            <h2>{venue.name}</h2>
-            <p><strong>Address:</strong> {venue.address || 'N/A'}</p>
-            <p><strong>Price (numeric):</strong> {venue.price_value !== null ? venue.price_value : 'N/A'}</p>
-            <p><small>Latitude: {venue.latitude}, Longitude: {venue.longitude}</small></p>
-          </li>
-        ))}
-      </ul>
-      </>
+          <ul>
+            {venues.map(venue => (
+              <li 
+                key={venue.id} 
+                style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '10px', cursor: 'pointer' }}
+                onClick={() => handleVenueSelect(venue)}
+              >
+                <h2>{venue.name}</h2>
+                <p><strong>Address:</strong> {venue.address || 'N/A'}</p>
+                <p><strong>Price (numeric):</strong> {venue.price_value !== null ? venue.price_value : 'N/A'}</p>
+                <p><small>Latitude: {venue.latitude}, Longitude: {venue.longitude}</small></p>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : (
-        <p style={{ marginTop: '20px' }}>No venues to display in the list.</p>
+        !loading && <p style={{ marginTop: '20px' }}>No venues to display in the list.</p>
       )}
     </div>
   );
