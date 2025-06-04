@@ -63,9 +63,9 @@ export default function AddVenuePage() {
       setLatitude('');
       setLongitude('');
       // Optionally, redirect the user after a short delay
-      // setTimeout(() => {
-      //   router.push('/venues'); 
-      // }, 2000);
+       setTimeout(() => {
+         router.push('/venues'); 
+       }, 2000);
     }
     setSubmitting(false);
   };
