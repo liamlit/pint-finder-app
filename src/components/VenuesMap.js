@@ -4,7 +4,7 @@
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { useEffect } from 'react'; // useState is not needed here anymore
+import { useEffect, useState } from 'react'; // useState is not needed here anymore
 
 // --- Fix for default marker icon issue ---
 delete L.Icon.Default.prototype._getIconUrl;
@@ -16,8 +16,19 @@ L.Icon.Default.mergeOptions({
 });
 // --- End fix ---
 
+const userLocationIcon = new L.Icon({
+  iconUrl: '/person-icon.png', // Example blue marker
+  iconSize: [32, 32],   // A bit smaller, more like a person
+  iconAnchor: [16, 32], // Point of the icon which will correspond to marker's location (bottom center)
+  popupAnchor: [0, -32]
+});
+
+
+
 export default function VenuesMap({ venues, center, zoom, onGeolocationSuccess }) {
   
+  const [userMarkerPosition, setUserMarkerPosition] = useState(null);
+
   console.log('VenuesMap rendering. Received props - center:', center, 'zoom:', zoom);
   // console.log('Venues received by VenuesMap:', venues); // You can uncomment if needed for debugging venues prop
 
@@ -31,6 +42,7 @@ export default function VenuesMap({ venues, center, zoom, onGeolocationSuccess }
             longitude: position.coords.longitude,
           };
           console.log("VenuesMap: User location found via geolocation:", userCoords);
+          setUserMarkerPosition([userCoords.latitude, userCoords.longitude]);
           if (onGeolocationSuccess) {
             onGeolocationSuccess(userCoords); // Call the callback prop from VenuesPage
           }  
@@ -77,6 +89,15 @@ export default function VenuesMap({ venues, center, zoom, onGeolocationSuccess }
           </Marker> 
         ) : null
       ))}
+
+{userMarkerPosition && (
+        <Marker 
+          position={userMarkerPosition} 
+          icon={userLocationIcon} // Use the custom blue icon
+        >
+          <Popup>You are approximately here.</Popup>
+        </Marker>
+      )}
     </MapContainer>
   );
 }
