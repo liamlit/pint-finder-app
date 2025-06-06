@@ -1,6 +1,7 @@
 // src/app/venues/page.js
 'use client';
 
+import Link from 'next/link';
 import styles from '../venues/VenuesPage.module.css'; // Add this import
 import { supabase } from '../../../supabaseClient'; // Verify this path
 import dynamic from 'next/dynamic';
@@ -25,10 +26,9 @@ export default function VenuesPage() {
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // State for map's center and zoom, managed by VenuesPage
   const [mapCenter, setMapCenter] = useState([DEFAULT_LATITUDE, DEFAULT_LONGITUDE]);
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     async function fetchVenues() {
@@ -96,6 +96,10 @@ export default function VenuesPage() {
     setMapZoom(13); 
   }, [setMapCenter, setMapZoom]);
 
+  const filteredVenues = venues.filter(venue =>
+    venue.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   console.log('VenuesPage rendering. mapCenter:', mapCenter, 'mapZoom:', mapZoom);
 
   if (loading) {
@@ -109,50 +113,68 @@ export default function VenuesPage() {
   return (
     <div>
       <h1>PintFinder Venues</h1>
-
+      {/* ... (Your subtitle if you have one) ... */}
+      
       <div style={{ marginBottom: '20px' }}>
         <VenuesMap
-          venues={venues}
+          venues={filteredVenues} // <-- Pass the filtered list to the map!
           center={mapCenter}
           zoom={mapZoom}
           onGeolocationSuccess={handleGeolocationSuccess} 
         />
       </div>
 
-      {venues.length > 0 ? (
-        <>
-          <div style={{ marginBottom: '20px' }}>
-            <button onClick={() => handleSort('asc')} style={{ marginRight: '10px' }}>
-              Sort Price: Low to High
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap' }}>
+        {/* --- ADD SEARCH INPUT --- */}
+        <div>
+          <input
+            type="text"
+            placeholder="Filter by name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ padding: '8px', marginRight: '10px' }}
+          />
+        </div>
+        
+        {/* --- Buttons Group --- */}
+        <div>
+          <button onClick={() => handleSort('asc')} style={{ marginRight: '10px' }}>
+            Sort Price: Low to High
+          </button>
+          <button onClick={() => handleSort('desc')} style={{ marginRight: '10px' }}>
+            Sort Price: High to Low
+          </button>
+          {/* --- ADD THE LINK/BUTTON --- */}
+          <Link href="/venues/add" passHref>
+            <button style={{ backgroundColor: '#28a745', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>
+              + Add New Venue
             </button>
-            <button onClick={() => handleSort('desc')}>
-              Sort Price: High to Low
-            </button>
-          </div>
+          </Link>
+        </div>
+      </div>
 
-          <div>
-            {venues.map(venue => (
-              <div 
-                key={venue.id} 
-                className={styles.venueCard} // Apply the .venueCard style
-                onClick={() => handleVenueSelect(venue)}
-              >
-                <h2 className={styles.venueName}>{venue.name}</h2>
-                <p className={styles.venueDetails}>
-                  <strong>Address:</strong> {venue.address || 'N/A'}
-                </p>
-                <p className={styles.venueDetails}>
-                  <strong>Price (numeric):</strong> {venue.price_value !== null ? venue.price_value : 'N/A'}
-                </p>
-                <p className={styles.venueCoordinates}>
-                  <small>Latitude: {venue.latitude}, Longitude: {venue.longitude}</small>
-                </p>
-              </div>
-            ))}
-          </div>
-        </>
+      {filteredVenues.length > 0 ? ( // <-- Use filteredVenues here
+        <div className={styles.venueListContainer}> {/* Using a class for potential future styling */}
+          {/* <-- 4. MAP OVER FILTERED LIST --> */}
+          {filteredVenues.map(venue => (
+            <div 
+              key={venue.id} 
+              className={styles.venueCard}
+              onClick={() => handleVenueSelect(venue)}
+            >
+              <h2 className={styles.venueName}>{venue.name}</h2>
+              <p className={styles.venueDetails}>
+                <strong>Address:</strong> {venue.address || 'N/A'}
+              </p>
+              <p className={styles.venueDetails}>
+                <strong>Price (numeric):</strong> {venue.price_value !== null ? venue.price_value : 'N/A'}
+              </p>
+              {/* Coordinates are optional in the card view now */}
+            </div>
+          ))}
+        </div>
       ) : (
-        !loading && <p style={{ marginTop: '20px' }}>No venues to display in the list.</p>
+        !loading && <p style={{ marginTop: '20px' }}>No venues match your search.</p>
       )}
     </div>
   );
