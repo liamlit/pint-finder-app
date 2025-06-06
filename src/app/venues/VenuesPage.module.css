@@ -1,0 +1,35 @@
+/* src/app/venues/VenuesPage.module.css */
+
+.venueCard {
+  background-color: #ffffff;
+  border: 1px solid #e1e4e8;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.venueCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.venueName {
+  font-size: 1.25rem; /* 20px */
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.venueDetails {
+  color: #586069;
+  font-size: 0.9rem; /* 14.4px */
+  margin-bottom: 4px;
+}
+
+.venueCoordinates {
+  color: #8b949e;
+  font-size: 0.8rem; /* 12.8px */
+  font-style: italic;
+}

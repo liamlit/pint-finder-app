@@ -1,6 +1,7 @@
 // src/app/venues/page.js
 'use client';
 
+import styles from '../venues/VenuesPage.module.css'; // Add this import
 import { supabase } from '../../../supabaseClient'; // Verify this path
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback } from 'react'; // ADD useCallback HERE
@@ -129,20 +130,26 @@ export default function VenuesPage() {
             </button>
           </div>
 
-          <ul>
+          <div>
             {venues.map(venue => (
-              <li 
+              <div 
                 key={venue.id} 
-                style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '10px', cursor: 'pointer' }}
+                className={styles.venueCard} // Apply the .venueCard style
                 onClick={() => handleVenueSelect(venue)}
               >
-                <h2>{venue.name}</h2>
-                <p><strong>Address:</strong> {venue.address || 'N/A'}</p>
-                <p><strong>Price (numeric):</strong> {venue.price_value !== null ? venue.price_value : 'N/A'}</p>
-                <p><small>Latitude: {venue.latitude}, Longitude: {venue.longitude}</small></p>
-              </li>
+                <h2 className={styles.venueName}>{venue.name}</h2>
+                <p className={styles.venueDetails}>
+                  <strong>Address:</strong> {venue.address || 'N/A'}
+                </p>
+                <p className={styles.venueDetails}>
+                  <strong>Price (numeric):</strong> {venue.price_value !== null ? venue.price_value : 'N/A'}
+                </p>
+                <p className={styles.venueCoordinates}>
+                  <small>Latitude: {venue.latitude}, Longitude: {venue.longitude}</small>
+                </p>
+              </div>
             ))}
-          </ul>
+          </div>
         </>
       ) : (
         !loading && <p style={{ marginTop: '20px' }}>No venues to display in the list.</p>
