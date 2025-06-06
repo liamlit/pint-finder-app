@@ -35,8 +35,8 @@ export default function VenuesPage() {
       setLoading(true);
       setError(null);
       const { data, error: fetchError } = await supabase
-        .from('venues')
-        .select('*');
+      .from('venues')
+      .select('*, pints(*)'); // <-- This is the only change here
 
       if (fetchError) {
         console.error('Error fetching venues:', fetchError.message);
@@ -166,11 +166,44 @@ export default function VenuesPage() {
               <p className={styles.venueDetails}>
                 <strong>Address:</strong> {venue.address || 'N/A'}
               </p>
-              <p className={styles.venueDetails}>
-                <strong>Price (numeric):</strong> {venue.price_value !== null ? venue.price_value : 'N/A'}
-              </p>
-              {/* Coordinates are optional in the card view now */}
-            </div>
+
+              {venue.pints && venue.pints.length > 0 ? (
+                <div style={{ marginTop: '10px' }}>
+                  {/* You can optionally add a title like: <strong>Pints Available:</strong> */}
+                  <ul style={{ listStyleType: 'none', paddingLeft: '0', margin: '0' }}>
+                    {venue.pints.map(pint => (
+                      <li key={pint.id} style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #eee', paddingTop: '4px', marginTop: '4px' }}>
+                        <span>{pint.beer_name}</span>
+                        <strong>${pint.price.toFixed(2)}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className={styles.venueDetails} style={{ fontStyle: 'italic', marginTop: '10px' }}>
+                  No specific pint prices listed.
+                </p>
+              )}
+
+                          
+               <div style={{ textAlign: 'right', marginTop: '15px' }}>
+                <Link href={`/venues/${venue.id}/add-pint`} passHref>
+                  <button 
+                    onClick={(e) => e.stopPropagation()} // Prevents the card's onClick from firing
+                    style={{ 
+                      backgroundColor: '#17a2b8', 
+                      color: 'white', 
+                      border: 'none', 
+                      padding: '5px 10px', 
+                      borderRadius: '5px', 
+                      cursor: 'pointer' 
+                    }}
+                  >
+                    + Add Beer/Price
+                  </button>
+                </Link>
+              </div>
+            </div> // This div closes the venueCard
           ))}
         </div>
       ) : (
