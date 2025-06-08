@@ -62,17 +62,28 @@ export default function VenuesPage() {
 
 
   const handleSort = (sortType) => {
-    const sortedVenues = [...venues].sort((a, b) => {
-      if (a.price_value === null && b.price_value === null) return 0;
-      if (a.price_value === null) return 1;
-      if (b.price_value === null) return -1;
+    // Helper function to find the minimum price for a single venue
+    const getMinPrice = (venue) => {
+      // If the venue has no pints listed, treat its price as infinitely high
+      if (!venue.pints || venue.pints.length === 0) {
+        return Infinity;
+      }
+      // Find the minimum price among all pints for this venue
+      return Math.min(...venue.pints.map(pint => pint.price));
+    };
+
+    const sorted = [...venues].sort((a, b) => {
+      const priceA = getMinPrice(a);
+      const priceB = getMinPrice(b);
+
       if (sortType === 'asc') {
-          return a.price_value - b.price_value;
-      } else {
-          return b.price_value - a.price_value;
+        return priceA - priceB; // Sort by cheapest pint, low to high
+      } else { // 'desc'
+        return priceB - priceA; // Sort by cheapest pint, high to low
       }
     });
-    setVenues(sortedVenues);
+
+    setVenues(sorted);
   };
 
   // Handler for when a venue is selected from the list
