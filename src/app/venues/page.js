@@ -3,13 +3,13 @@
 
 import Link from 'next/link';
 import styles from '../venues/VenuesPage.module.css'; // Add this import
-import { supabase } from '../../../supabaseClient'; // Verify this path
+import { supabase } from '../../../supabaseClient'; // Recommended path with alias
 import dynamic from 'next/dynamic';
-import { useState, useEffect, useCallback } from 'react'; // ADD useCallback HERE
+import { useState, useEffect, useCallback } from 'react';
 
 // Dynamically import VenuesMap with SSR turned off
 const VenuesMap = dynamic(
-  () => import('@/components/VenuesMap'), // Verify this path
+  () => import('@/components/VenuesMap'), // Recommended path with alias
   { 
     ssr: false,
     loading: () => <p>Loading Map...</p> 
@@ -35,8 +35,8 @@ export default function VenuesPage() {
       setLoading(true);
       setError(null);
       const { data, error: fetchError } = await supabase
-      .from('venues')
-      .select('*, pints(*)'); // <-- This is the only change here
+        .from('venues')
+        .select('*, pints(*)');
 
       if (fetchError) {
         console.error('Error fetching venues:', fetchError.message);
@@ -44,13 +44,10 @@ export default function VenuesPage() {
         setVenues([]);
       } else {
         setVenues(data || []);
-        // Set initial map center based on first venue if venues exist
-        // and if the map hasn't been centered by another action yet (e.g. geolocation)
         if (data && data.length > 0) {
-          // Check if mapCenter is still the absolute default before overriding
           if (mapCenter[0] === DEFAULT_LATITUDE && mapCenter[1] === DEFAULT_LONGITUDE) {
             setMapCenter([data[0].latitude || DEFAULT_LATITUDE, data[0].longitude || DEFAULT_LONGITUDE]);
-            setMapZoom(13); // A bit more zoomed in if there are venues
+            setMapZoom(13);
           }
         }
       }
@@ -58,51 +55,32 @@ export default function VenuesPage() {
     }
     fetchVenues();
   // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, []); // We only want to fetch venues once on mount. mapCenter is managed separately.
+  }, []); 
 
 
   const handleSort = (sortType) => {
-    // Helper function to find the minimum price for a single venue
     const getMinPrice = (venue) => {
-      // If the venue has no pints listed, treat its price as infinitely high
-      if (!venue.pints || venue.pints.length === 0) {
-        return Infinity;
-      }
-      // Find the minimum price among all pints for this venue
+      if (!venue.pints || venue.pints.length === 0) return Infinity;
       return Math.min(...venue.pints.map(pint => pint.price));
     };
 
     const sorted = [...venues].sort((a, b) => {
       const priceA = getMinPrice(a);
       const priceB = getMinPrice(b);
-
-      if (sortType === 'asc') {
-        return priceA - priceB; // Sort by cheapest pint, low to high
-      } else { // 'desc'
-        return priceB - priceA; // Sort by cheapest pint, high to low
-      }
+      return sortType === 'asc' ? priceA - priceB : priceB - priceA;
     });
 
     setVenues(sorted);
   };
 
-  // Handler for when a venue is selected from the list
-  const handleVenueSelect = (venue) => {
+  const handleVenueSelect = useCallback((venue) => {
     if (venue.latitude && venue.longitude) {
-      console.log('VenuesPage: handleVenueSelect called for:', venue.name); // Log which venue
-      const newCenter = [venue.latitude, venue.longitude];
-      const newZoom = SELECTED_VENUE_ZOOM;
-      console.log('VenuesPage: Setting mapCenter to:', newCenter, 'and mapZoom to:', newZoom);
-      setMapCenter(newCenter);
-      setMapZoom(newZoom);
-    } else {
-      console.log('VenuesPage: handleVenueSelect called for venue with missing coordinates:', venue.name);
+      setMapCenter([venue.latitude, venue.longitude]);
+      setMapZoom(SELECTED_VENUE_ZOOM);
     }
-  };
+  }, [setMapCenter, setMapZoom]);
 
-  // Handler for when geolocation is successful in VenuesMap
   const handleGeolocationSuccess = useCallback((coords) => {
-    console.log('VenuesPage: Geolocation success, new coords:', coords);
     setMapCenter([coords.latitude, coords.longitude]);
     setMapZoom(13); 
   }, [setMapCenter, setMapZoom]);
@@ -111,32 +89,23 @@ export default function VenuesPage() {
     venue.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  console.log('VenuesPage rendering. mapCenter:', mapCenter, 'mapZoom:', mapZoom);
-
-  if (loading) {
-    return <p>Loading venues...</p>;
-  }
-
-  if (error) {
-    return <p>Error loading venues: {error}</p>;
-  }
+  if (loading) return <p>Loading venues...</p>;
+  if (error) return <p>Error loading venues: {error}</p>;
 
   return (
     <div>
       <h1>PintFinder Venues</h1>
-      {/* ... (Your subtitle if you have one) ... */}
       
       <div style={{ marginBottom: '20px' }}>
         <VenuesMap
-          venues={filteredVenues} // <-- Pass the filtered list to the map!
+          venues={filteredVenues}
           center={mapCenter}
           zoom={mapZoom}
           onGeolocationSuccess={handleGeolocationSuccess} 
         />
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap' }}>
-        {/* --- ADD SEARCH INPUT --- */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <input
             type="text"
@@ -147,7 +116,6 @@ export default function VenuesPage() {
           />
         </div>
         
-        {/* --- Buttons Group --- */}
         <div>
           <button onClick={() => handleSort('asc')} style={{ marginRight: '10px' }}>
             Sort Price: Low to High
@@ -155,7 +123,6 @@ export default function VenuesPage() {
           <button onClick={() => handleSort('desc')} style={{ marginRight: '10px' }}>
             Sort Price: High to Low
           </button>
-          {/* --- ADD THE LINK/BUTTON --- */}
           <Link href="/venues/add" passHref>
             <button style={{ backgroundColor: '#28a745', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>
               + Add New Venue
@@ -164,43 +131,67 @@ export default function VenuesPage() {
         </div>
       </div>
 
-      {filteredVenues.length > 0 ? ( // <-- Use filteredVenues here
-        <div className={styles.venueListContainer}> {/* Using a class for potential future styling */}
-          {/* <-- 4. MAP OVER FILTERED LIST --> */}
+      {filteredVenues.length > 0 ? (
+        <div>
           {filteredVenues.map(venue => (
             <div 
               key={venue.id} 
               className={styles.venueCard}
-              onClick={() => handleVenueSelect(venue)}
             >
-              <h2 className={styles.venueName}>{venue.name}</h2>
-              <p className={styles.venueDetails}>
-                <strong>Address:</strong> {venue.address || 'N/A'}
-              </p>
-
-              {venue.pints && venue.pints.length > 0 ? (
-                <div style={{ marginTop: '10px' }}>
-                  {/* You can optionally add a title like: <strong>Pints Available:</strong> */}
-                  <ul style={{ listStyleType: 'none', paddingLeft: '0', margin: '0' }}>
-                    {venue.pints.map(pint => (
-                      <li key={pint.id} style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #eee', paddingTop: '4px', marginTop: '4px' }}>
-                        <span>{pint.beer_name}</span>
-                        <strong>${pint.price.toFixed(2)}</strong>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <p className={styles.venueDetails} style={{ fontStyle: 'italic', marginTop: '10px' }}>
-                  No specific pint prices listed.
+              <div onClick={() => handleVenueSelect(venue)} style={{cursor: 'pointer'}}>
+                <h2 className={styles.venueName}>{venue.name}</h2>
+                <p className={styles.venueDetails}>
+                  <strong>Address:</strong> {venue.address || 'N/A'}
                 </p>
-              )}
 
+                {venue.pints && venue.pints.length > 0 ? (
+                  <div style={{ marginTop: '10px' }}>
+                    <ul style={{ listStyleType: 'none', paddingLeft: '0', margin: '0' }}>
+                      {venue.pints.map(pint => (
+                        <li 
+                          key={pint.id} 
+                          style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            borderTop: '1px solid #eee', 
+                            paddingTop: '4px', 
+                            marginTop: '4px' 
+                          }}
+                        >
+                          <span>{pint.beer_name} - <strong>${pint.price.toFixed(2)}</strong></span>
                           
-               <div style={{ textAlign: 'right', marginTop: '15px' }}>
+                          <Link href={`/pints/${pint.id}/edit`} passHref>
+                            <button 
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ 
+                                backgroundColor: '#ffc107', 
+                                color: 'black',
+                                border: 'none',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem'
+                              }}
+                            >
+                              Edit
+                            </button>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className={styles.venueDetails} style={{ fontStyle: 'italic', marginTop: '10px' }}>
+                    No specific pint prices listed.
+                  </p>
+                )}
+              </div>
+              
+              <div style={{ textAlign: 'right', marginTop: '15px' }}>
                 <Link href={`/venues/${venue.id}/add-pint`} passHref>
                   <button 
-                    onClick={(e) => e.stopPropagation()} // Prevents the card's onClick from firing
+                    onClick={(e) => e.stopPropagation()}
                     style={{ 
                       backgroundColor: '#17a2b8', 
                       color: 'white', 
@@ -214,7 +205,7 @@ export default function VenuesPage() {
                   </button>
                 </Link>
               </div>
-            </div> // This div closes the venueCard
+            </div>
           ))}
         </div>
       ) : (
