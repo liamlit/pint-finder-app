@@ -1,15 +1,16 @@
 // src/app/venues/page.js
 'use client';
 
+import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import styles from '../venues/VenuesPage.module.css'; // Add this import
-import { supabase } from '../../../supabaseClient'; // Recommended path with alias
+import styles from './VenuesPage.module.css';
+import { supabase } from '../../../supabaseClient'; // Verify this path is correct
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback } from 'react';
 
 // Dynamically import VenuesMap with SSR turned off
 const VenuesMap = dynamic(
-  () => import('@/components/VenuesMap'), // Recommended path with alias
+  () => import('@/components/VenuesMap'), // Verify this path is correct
   { 
     ssr: false,
     loading: () => <p>Loading Map...</p> 
@@ -92,12 +93,10 @@ export default function VenuesPage() {
         .eq('id', pintIdToDelete);
 
       if (error) {
-    
         throw error;
       }
       setVenues(currentVenues => 
         currentVenues.map(venue => {
-          // Find the pint within the nested array
           const pintExistsInVenue = venue.pints.some(p => p.id === pintIdToDelete);
           if (pintExistsInVenue) {
             return {
@@ -187,51 +186,56 @@ export default function VenuesPage() {
                         <li 
                           key={pint.id} 
                           style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center',
                             borderTop: '1px solid #eee', 
-                            paddingTop: '4px', 
-                            marginTop: '4px' 
+                            paddingTop: '6px', 
+                            marginTop: '6px' 
                           }}
                         >
-                          <span>{pint.beer_name} - <strong>${pint.price.toFixed(2)}</strong></span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{pint.beer_name} - <strong>${pint.price.toFixed(2)}</strong></span>
+                            
+                            {/* Edit/Delete Buttons */}
+                            <div>
+                              <Link href={`/pints/${pint.id}/edit`} passHref>
+                                <button 
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ 
+                                    backgroundColor: '#ffc107', 
+                                    color: 'black',
+                                    border: 'none',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.8rem',
+                                    marginRight: '5px'
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                              </Link>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeletePint(pint.id);
+                                }}
+                                style={{ 
+                                  backgroundColor: '#dc3545', 
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.8rem'
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
                           
-                         <div>
-                          <Link href={`/pints/${pint.id}/edit`} passHref>
-                            <button 
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ 
-                                backgroundColor: '#ffc107', 
-                                color: 'black',
-                                border: 'none',
-                                padding: '4px 8px',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '0.8rem'
-                              }}
-                            >
-                              Edit
-                            </button>
-                          </Link>
-
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation(); // Stop the card's click event
-                              handleDeletePint(pint.id); // Call our new delete function
-                            }}
-                            style={{ 
-                              backgroundColor: '#dc3545', 
-                              color: 'white',
-                              border: 'none',
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '0.8rem'
-                            }}
-                          >
-                            Delete
-                          </button>
+                          {/* Timestamp Display */}
+                          <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+                            Updated {formatDistanceToNow(new Date(pint.updated_at || pint.created_at), { addSuffix: true })}
                           </div>
                         </li>
                       ))}
