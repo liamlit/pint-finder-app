@@ -80,6 +80,42 @@ export default function VenuesPage() {
     }
   }, [setMapCenter, setMapZoom]);
 
+  const handleDeletePint = async (pintIdToDelete) => {
+    if (!window.confirm("Are you sure you want to delete this pint price?")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('pints')
+        .delete()
+        .eq('id', pintIdToDelete);
+
+      if (error) {
+    
+        throw error;
+      }
+      setVenues(currentVenues => 
+        currentVenues.map(venue => {
+          // Find the pint within the nested array
+          const pintExistsInVenue = venue.pints.some(p => p.id === pintIdToDelete);
+          if (pintExistsInVenue) {
+            return {
+              ...venue,
+              pints: venue.pints.filter(p => p.id !== pintIdToDelete),
+            };
+          }
+          return venue;
+        })
+      );
+      
+      console.log("Successfully deleted pint:", pintIdToDelete);
+
+    } catch (error) {
+      console.error("Error deleting pint:", error.message);
+    }
+  };
+
   const handleGeolocationSuccess = useCallback((coords) => {
     setMapCenter([coords.latitude, coords.longitude]);
     setMapZoom(13); 
@@ -161,6 +197,7 @@ export default function VenuesPage() {
                         >
                           <span>{pint.beer_name} - <strong>${pint.price.toFixed(2)}</strong></span>
                           
+                         <div>
                           <Link href={`/pints/${pint.id}/edit`} passHref>
                             <button 
                               onClick={(e) => e.stopPropagation()}
@@ -177,6 +214,25 @@ export default function VenuesPage() {
                               Edit
                             </button>
                           </Link>
+
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation(); // Stop the card's click event
+                              handleDeletePint(pint.id); // Call our new delete function
+                            }}
+                            style={{ 
+                              backgroundColor: '#dc3545', 
+                              color: 'white',
+                              border: 'none',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            Delete
+                          </button>
+                          </div>
                         </li>
                       ))}
                     </ul>
