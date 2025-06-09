@@ -1,27 +1,27 @@
 // src/app/venues/page.js
 'use client';
 
-import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import styles from '../venues/VenuesPage.module.css';
-import { supabase } from '../../../supabaseClient'; // Verify this path is correct
+import styles from './VenuesPage.module.css'; // Simplified path
+import { supabase } from '../../../supabaseClient'; // Recommended path with alias
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback } from 'react';
+import VenueCard from '@/components/VenueCard'; // Recommended path with alias
 
 // Dynamically import VenuesMap with SSR turned off
 const VenuesMap = dynamic(
-  () => import('@/components/VenuesMap'), // Verify this path is correct
+  () => import('@/components/VenuesMap'), // Recommended path with alias
   { 
     ssr: false,
     loading: () => <p>Loading Map...</p> 
   }
 );
 
-// Define initial default coordinates (e.g., Melbourne)
+// Define initial default coordinates
 const DEFAULT_LATITUDE = -37.840935;
 const DEFAULT_LONGITUDE = 144.946457;
 const DEFAULT_ZOOM = 9;
-const SELECTED_VENUE_ZOOM = 15; // Zoom level when a venue is selected
+const SELECTED_VENUE_ZOOM = 15;
 
 export default function VenuesPage() {
   const [venues, setVenues] = useState([]);
@@ -37,7 +37,7 @@ export default function VenuesPage() {
       setError(null);
       const { data, error: fetchError } = await supabase
         .from('venues')
-        .select('*, pints(*)');
+        .select('*, pints(id, beer_name, price, created_at, updated_at)');
 
       if (fetchError) {
         console.error('Error fetching venues:', fetchError.message);
@@ -55,7 +55,7 @@ export default function VenuesPage() {
       setLoading(false);
     }
     fetchVenues();
-  // eslint-disable-next-line react-hooks/exhaustive-deps 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
 
@@ -92,9 +92,8 @@ export default function VenuesPage() {
         .delete()
         .eq('id', pintIdToDelete);
 
-      if (error) {
-        throw error;
-      }
+      if (error) { throw error; }
+
       setVenues(currentVenues => 
         currentVenues.map(venue => {
           const pintExistsInVenue = venue.pints.some(p => p.id === pintIdToDelete);
@@ -140,26 +139,26 @@ export default function VenuesPage() {
         />
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+      <div className={styles.controlsContainer}>
         <div>
           <input
             type="text"
             placeholder="Filter by name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ padding: '8px', marginRight: '10px' }}
+            className={styles.searchInput}
           />
         </div>
         
-        <div>
-          <button onClick={() => handleSort('asc')} style={{ marginRight: '10px' }}>
+        <div className={styles.buttonGroup}>
+          <button onClick={() => handleSort('asc')} className={styles.controlButton}>
             Sort Price: Low to High
           </button>
-          <button onClick={() => handleSort('desc')} style={{ marginRight: '10px' }}>
+          <button onClick={() => handleSort('desc')} className={styles.controlButton}>
             Sort Price: High to Low
           </button>
           <Link href="/venues/add" passHref>
-            <button style={{ backgroundColor: '#28a745', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>
+            <button className={`${styles.controlButton} ${styles.addButton}`}>
               + Add New Venue
             </button>
           </Link>
@@ -169,103 +168,12 @@ export default function VenuesPage() {
       {filteredVenues.length > 0 ? (
         <div>
           {filteredVenues.map(venue => (
-            <div 
-              key={venue.id} 
-              className={styles.venueCard}
-            >
-              <div onClick={() => handleVenueSelect(venue)} style={{cursor: 'pointer'}}>
-                <h2 className={styles.venueName}>{venue.name}</h2>
-                <p className={styles.venueDetails}>
-                  <strong>Address:</strong> {venue.address || 'N/A'}
-                </p>
-
-                {venue.pints && venue.pints.length > 0 ? (
-                  <div style={{ marginTop: '10px' }}>
-                    <ul style={{ listStyleType: 'none', paddingLeft: '0', margin: '0' }}>
-                      {venue.pints.map(pint => (
-                        <li 
-                          key={pint.id} 
-                          style={{ 
-                            borderTop: '1px solid #eee', 
-                            paddingTop: '6px', 
-                            marginTop: '6px' 
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>{pint.beer_name} - <strong>${pint.price.toFixed(2)}</strong></span>
-                            
-                            {/* Edit/Delete Buttons */}
-                            <div>
-                              <Link href={`/pints/${pint.id}/edit`} passHref>
-                                <button 
-                                  onClick={(e) => e.stopPropagation()}
-                                  style={{ 
-                                    backgroundColor: '#ffc107', 
-                                    color: 'black',
-                                    border: 'none',
-                                    padding: '4px 8px',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontSize: '0.8rem',
-                                    marginRight: '5px'
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                              </Link>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeletePint(pint.id);
-                                }}
-                                style={{ 
-                                  backgroundColor: '#dc3545', 
-                                  color: 'white',
-                                  border: 'none',
-                                  padding: '4px 8px',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '0.8rem'
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {/* Timestamp Display */}
-                          <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
-                            Updated {formatDistanceToNow(new Date(pint.updated_at || pint.created_at), { addSuffix: true })}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className={styles.venueDetails} style={{ fontStyle: 'italic', marginTop: '10px' }}>
-                    No specific pint prices listed.
-                  </p>
-                )}
-              </div>
-              
-              <div style={{ textAlign: 'right', marginTop: '15px' }}>
-                <Link href={`/venues/${venue.id}/add-pint`} passHref>
-                  <button 
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ 
-                      backgroundColor: '#17a2b8', 
-                      color: 'white', 
-                      border: 'none', 
-                      padding: '5px 10px', 
-                      borderRadius: '5px', 
-                      cursor: 'pointer' 
-                    }}
-                  >
-                    + Add Beer/Price
-                  </button>
-                </Link>
-              </div>
-            </div>
+            <VenueCard 
+              key={venue.id}
+              venue={venue} 
+              onVenueSelect={handleVenueSelect}
+              onDeletePint={handleDeletePint} 
+            />
           ))}
         </div>
       ) : (
