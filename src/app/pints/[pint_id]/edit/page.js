@@ -2,8 +2,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../../../../supabaseClient'; // Verify this path
+import { supabase } from '../../../../../supabaseClient'; // Verify path
 import { useRouter, useParams } from 'next/navigation';
+import styles from '../../../../styles/Form.module.css'; // <-- 1. Import the shared CSS module
 
 export default function EditPintPage() {
   const [beerName, setBeerName] = useState('');
@@ -12,12 +13,11 @@ export default function EditPintPage() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [isErrorMessage, setIsErrorMessage] = useState(false);
-  
+
   const router = useRouter();
   const params = useParams();
-  const pintId = params.pint_id; // Get the pint ID from the URL
+  const pintId = params.pint_id;
 
-  // Fetch the current pint data when the component mounts
   const fetchPintData = useCallback(async () => {
     if (!pintId) return;
 
@@ -49,7 +49,6 @@ export default function EditPintPage() {
     setMessage('');
     setIsErrorMessage(false);
 
-    // Basic Validation
     if (!beerName.trim() || !String(price).trim()) {
       setMessage('Please fill in all fields.');
       setIsErrorMessage(true);
@@ -73,7 +72,7 @@ export default function EditPintPage() {
     const { error } = await supabase
       .from('pints')
       .update(updatedPint)
-      .eq('id', pintId); // Specify which pint to update
+      .eq('id', pintId);
 
     if (error) {
       setMessage(`Error updating pint: ${error.message}`);
@@ -82,7 +81,7 @@ export default function EditPintPage() {
       setMessage('Pint updated successfully!');
       setIsErrorMessage(false);
       setTimeout(() => {
-        router.push('/venues'); // Redirect back to the main list
+        router.push('/venues');
       }, 1500);
     }
     setSubmitting(false);
@@ -92,23 +91,24 @@ export default function EditPintPage() {
     return <p>Loading pint details...</p>;
   }
 
+  // --- 2. UPDATE THE JSX WITH CLASSNAMES ---
   return (
-    <div style={{ maxWidth: '600px', margin: '20px auto', padding: '20px', border: '1px solid #ccc' }}>
+    <div className={styles.formContainer}>
       <h1>Edit Pint</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '10px' }}>
-          <label htmlFor="beerName" style={{ display: 'block', marginBottom: '5px' }}>Beer Name:</label>
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <div className={styles.formGroup}>
+          <label htmlFor="beerName" className={styles.label}>Beer Name:</label>
           <input
             type="text"
             id="beerName"
             value={beerName}
             onChange={(e) => setBeerName(e.target.value)}
             required
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+            className={styles.inputField}
           />
         </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label htmlFor="price" style={{ display: 'block', marginBottom: '5px' }}>Price:</label>
+        <div className={styles.formGroup}>
+          <label htmlFor="price" className={styles.label}>Price:</label>
           <input
             type="number"
             id="price"
@@ -116,18 +116,22 @@ export default function EditPintPage() {
             onChange={(e) => setPrice(e.target.value)}
             step="0.01"
             required
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+            className={styles.inputField}
           />
         </div>
         <button 
           type="submit" 
-          disabled={submitting}
-          style={{ padding: '10px 15px', backgroundColor: submitting ? '#ccc' : '#0070f3', color: 'white', border: 'none', cursor: 'pointer' }}
+          disabled={submitting || loading}
+          className={styles.submitButton}
         >
           {submitting ? 'Saving...' : 'Save Changes'}
         </button>
       </form>
-      {message && <p style={{ marginTop: '15px', color: isErrorMessage ? 'red' : 'green' }}>{message}</p>}
+      {message && (
+        <p className={`${styles.message} ${isErrorMessage ? styles.error : styles.success}`}>
+          {message}
+        </p>
+      )}
     </div>
   );
 }

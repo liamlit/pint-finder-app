@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { supabase } from '../../../../supabaseClient'; // Verify this path
 import { useRouter } from 'next/navigation';
-import styles from './AddVenuePage.module.css'; // <-- 1. Import the new CSS module
+import styles from '../../../styles/Form.module.css'; // <-- 1. Import the new CSS module
 
 export default function AddVenuePage() {
   const [venueName, setVenueName] = useState('');
@@ -86,7 +86,7 @@ export default function AddVenuePage() {
   // --- 2. UPDATE THE JSX WITH CLASSNAMES ---
   return (
     <div className={styles.formContainer}>
-      <h1>Add New PintFinder Venue</h1>
+      <h1>Add New Venue</h1>
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formGroup}>
           <label htmlFor="venueName" className={styles.label}>Venue Name:</label>

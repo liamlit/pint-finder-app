@@ -3,7 +3,7 @@
 
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import styles from './VenuesPage.module.css';
+import styles from '../venues/VenuesPage.module.css';
 import { supabase } from '../../../supabaseClient'; // Verify this path is correct
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback } from 'react';
