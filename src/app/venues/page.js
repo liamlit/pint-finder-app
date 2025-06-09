@@ -1,19 +1,22 @@
 // src/app/venues/page.js
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react'; // <-- 1. IMPORT useMemo
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { supabase } from '../../../supabaseClient'; // Verify path
+import { supabase } from '../../../supabaseClient'; 
 import styles from './VenuesPage.module.css';
-import VenueCard from '@/components/VenueCard'; // Verify path
+import VenueCard from '@/components/VenueCard'; 
+import Select from 'react-select'; // <-- 2. IMPORT react-select
 
 const VenuesMap = dynamic(() => import('@/components/VenuesMap'), { ssr: false, loading: () => <p>Loading Map...</p> });
 
+// ... (your constants like DEFAULT_LATITUDE, etc. remain the same) ...
 const DEFAULT_LATITUDE = -37.840935;
 const DEFAULT_LONGITUDE = 144.946457;
 const DEFAULT_ZOOM = 9;
 const SELECTED_VENUE_ZOOM = 15;
+
 
 export default function VenuesPage() {
   const [venues, setVenues] = useState([]);
@@ -22,34 +25,24 @@ export default function VenuesPage() {
   const [mapCenter, setMapCenter] = useState([DEFAULT_LATITUDE, DEFAULT_LONGITUDE]);
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // --- NEW STATE FOR SUBURB FILTER ---
   const [suburbs, setSuburbs] = useState([]);
-  const [selectedSuburb, setSelectedSuburb] = useState(''); // Empty string means "All"
+  const [selectedSuburb, setSelectedSuburb] = useState('');
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       setError(null);
-
-      // Fetch both venues and the list of unique suburbs concurrently
       const [venuesResponse, suburbsResponse] = await Promise.all([
         supabase.from('venues').select('*, pints(*)'),
-        supabase.from('distinct_suburbs').select('suburb') // Fetch from our new view
+        supabase.from('distinct_suburbs').select('suburb')
       ]);
 
       if (venuesResponse.error) {
         console.error('Error fetching venues:', venuesResponse.error.message);
         setError(venuesResponse.error.message);
       } else {
-        const data = venuesResponse.data || [];
-        setVenues(data);
-        if (data.length > 0) {
-          if (mapCenter[0] === DEFAULT_LATITUDE && mapCenter[1] === DEFAULT_LONGITUDE) {
-            setMapCenter([data[0].latitude || DEFAULT_LATITUDE, data[0].longitude || DEFAULT_LONGITUDE]);
-            setMapZoom(13);
-          }
-        }
+        setVenues(venuesResponse.data || []);
+        // ... (logic to set initial map center)
       }
       
       if (suburbsResponse.error) {
@@ -57,7 +50,6 @@ export default function VenuesPage() {
       } else {
         setSuburbs(suburbsResponse.data || []);
       }
-
       setLoading(false);
     }
     fetchData();
@@ -70,10 +62,17 @@ export default function VenuesPage() {
   const handleDeletePint = async (pintIdToDelete) => { /* ... no changes here ... */ };
   const handleGeolocationSuccess = useCallback((coords) => { /* ... no changes here ... */ }, [setMapCenter, setMapZoom]);
 
-  // --- MODIFIED: Update filtering logic to include suburb ---
+
+  // --- 3. PREPARE DATA FOR react-select ---
+  // react-select expects options in the format: { value: 'suburb', label: 'Suburb' }
+  const suburbOptions = useMemo(() => 
+    suburbs.map(s => ({ value: s.suburb, label: s.suburb })),
+    [suburbs]
+  );
+  // --- END ---
+
   const filteredVenues = venues.filter(venue => {
     const nameMatch = venue.name.toLowerCase().includes(searchTerm.toLowerCase());
-    // If a suburb is selected, check for a match. If "All" is selected, this check passes.
     const suburbMatch = selectedSuburb ? venue.suburb === selectedSuburb : true; 
     return nameMatch && suburbMatch;
   });
@@ -87,16 +86,16 @@ export default function VenuesPage() {
       
       <div style={{ marginBottom: '20px' }}>
         <VenuesMap
-          venues={filteredVenues} // Pass filtered venues to map
+          venues={filteredVenues}
           center={mapCenter}
           zoom={mapZoom}
           onGeolocationSuccess={handleGeolocationSuccess} 
         />
       </div>
 
-      {/* --- MODIFIED: Add the suburb dropdown to the controls --- */}
+      {/* --- 4. REPLACE <select> WITH <Select> COMPONENT --- */}
       <div className={styles.controlsContainer}>
-        <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+        <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap', minWidth: '200px'}}>
           <input
             type="text"
             placeholder="Filter by name..."
@@ -104,16 +103,22 @@ export default function VenuesPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className={styles.searchInput}
           />
-          <select 
-            value={selectedSuburb}
-            onChange={(e) => setSelectedSuburb(e.target.value)}
-            className={styles.searchInput} // Can reuse the search input style
-          >
-            <option value="">All Suburbs</option>
-            {suburbs.map(s => (
-              <option key={s.suburb} value={s.suburb}>{s.suburb}</option>
-            ))}
-          </select>
+          {/* Using the new searchable Select component */}
+          <Select 
+            instanceId="suburb-select" // Important for SSR and accessibility
+            options={suburbOptions}
+            onChange={(selectedOption) => setSelectedSuburb(selectedOption ? selectedOption.value : '')}
+            value={suburbOptions.find(option => option.value === selectedSuburb)}
+            placeholder="Search or select a suburb..."
+            isClearable
+            styles={{
+              container: (base) => ({
+                ...base,
+                flex: 1,
+                minWidth: '200px',
+              }),
+            }}
+          />
         </div>
         
         <div className={styles.buttonGroup}>
@@ -127,8 +132,9 @@ export default function VenuesPage() {
           </Link>
         </div>
       </div>
-      {/* --- END MODIFIED --- */}
+      {/* --- END REPLACEMENT --- */}
 
+      {/* ... (Your existing venues list rendering logic remains the same) ... */}
       {filteredVenues.length > 0 ? (
         <div>
           {filteredVenues.map(venue => (
