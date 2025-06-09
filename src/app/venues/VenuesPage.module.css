@@ -93,3 +93,51 @@
 .addButton:hover {
   background-color: #218838; /* Darker green on hover */
 }
+
+/* Add this to the end of src/app/venues/VenuesPage.module.css */
+
+.toggleButton {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0;
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.toggleButton:hover {
+  text-decoration: underline;
+}
+
+/* Base style for buttons inside the card list */
+.listButton {
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-left: 5px;
+  transition: opacity 0.2s;
+}
+
+.listButton:hover {
+  opacity: 0.8;
+}
+
+.editButton {
+  background-color: #ffffff; /* Yellow */
+  color: black;
+}
+
+.deleteButton {
+  background-color: #dc354677; /* Red */
+  color: white;
+}
+
+.addPintButton {
+  background-color: #17a2b8; /* Teal/Info color */
+  color: white;
+  padding: 5px 10px;
+}
