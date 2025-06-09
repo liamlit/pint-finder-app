@@ -1,0 +1,27 @@
+/* src/components/Header.module.css */
+.header {
+    background-color: #1a1a1a; /* A dark charcoal color */
+    padding: 1rem 2rem;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-decoration: none;
+    color: white;
+  }
+  
+  .navLinks a {
+    color: #adadad;
+    text-decoration: none;
+    margin-left: 20px;
+    transition: color 0.2s ease-in-out;
+  }
+  
+  .navLinks a:hover {
+    color: white;
+  }

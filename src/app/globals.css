@@ -1,6 +1,9 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background-color: #f6f8fa;
+  --text-color: #1a1a1a;
+  --primary-color: #0070f3;
+  --card-background: #ffffff;
+  --border-color: #e1e4e8;
 }
 
 @media (prefers-color-scheme: dark) {
