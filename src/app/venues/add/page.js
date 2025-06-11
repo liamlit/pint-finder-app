@@ -10,7 +10,7 @@ import styles from '../../../styles/Form.module.css'; // <-- 1. Import the new C
 
 export default function AddVenuePage() {
   const [venueName, setVenueName] = useState('');
-  const [address, setAddress] = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
   const [priceValue, setPriceValue] = useState('');
   const [suburb, setSuburb] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -20,13 +20,12 @@ export default function AddVenuePage() {
 
 
   const handleSubmit = async (e) => {
-    // ... (your handleSubmit function logic remains exactly the same) ...
     e.preventDefault();
     setSubmitting(true);
     setMessage('');
     setIsErrorMessage(false);
 
-    if (!venueName.trim() || !address.trim() || !priceValue.trim() || !suburb) {
+     if (!venueName.trim() || !streetAddress.trim() || !priceValue.trim() || !suburb) {
       setMessage('Please fill in all fields, including the suburb.');
       setIsErrorMessage(true);
       setSubmitting(false);
@@ -43,7 +42,9 @@ export default function AddVenuePage() {
 
     try {
       setMessage('Finding coordinates for the address...');
-      const geocodingUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+      const fullAddress = `${streetAddress.trim()}, ${suburb}, VIC, Australia`;
+      
+      const geocodingUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`;
 
       const geocodingResponse = await fetch(geocodingUrl);
       const geocodingData = await geocodingResponse.json();
@@ -57,7 +58,7 @@ export default function AddVenuePage() {
 
       const newVenue = {
         name: venueName.trim(),
-        address: address.trim(),
+        address: fullAddress,
         suburb: suburb,
         price_value: numPrice, 
         latitude: parseFloat(lat),
@@ -127,17 +128,17 @@ export default function AddVenuePage() {
         </div>
 
         <div className={styles.formGroup}>
-          <label htmlFor="address" className={styles.label}>Full Address:</label>
+          <label htmlFor="streetAddress" className={styles.label}>Street Address:</label>
           <input
             type="text"
-            id="address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            id="streetAddress"
+            value={streetAddress}
+            onChange={(e) => setStreetAddress(e.target.value)}
             required
-            placeholder="e.g., 57 Swan Street, Richmond, VIC 3121"
+            placeholder="e.g., 57 Swan Street"
             className={styles.inputField}
           />
-        </div>
+      </div>
 
         <div className={styles.formGroup}>
           <label htmlFor="priceValue" className={styles.label}>Average Price (e.g., 10.50):</label>
