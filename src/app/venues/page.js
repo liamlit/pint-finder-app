@@ -14,7 +14,7 @@ const VenuesMap = dynamic(() => import('@/components/VenuesMap'), { ssr: false, 
 // ... (your constants like DEFAULT_LATITUDE, etc. remain the same) ...
 const DEFAULT_LATITUDE = -37.840935;
 const DEFAULT_LONGITUDE = 144.946457;
-const DEFAULT_ZOOM = 9;
+const DEFAULT_ZOOM = 10;
 const SELECTED_VENUE_ZOOM = 15;
 
 
@@ -57,11 +57,41 @@ export default function VenuesPage() {
   }, []); 
 
   // ... (handleSort, handleVenueSelect, handleDeletePint, handleGeolocationSuccess functions remain the same) ...
-  const handleSort = (sortType) => { /* ... no changes here ... */ };
-  const handleVenueSelect = useCallback((venue) => { /* ... no changes here ... */ }, [setMapCenter, setMapZoom]);
-  const handleDeletePint = async (pintIdToDelete) => { /* ... no changes here ... */ };
-  const handleGeolocationSuccess = useCallback((coords) => { /* ... no changes here ... */ }, [setMapCenter, setMapZoom]);
+ const handleSort = () => {
+  const sortedVenues = [...venues].sort((a, b) => {
+    const getCheapestPrice = (venue) => {
+      if (!venue.pints || venue.pints.length === 0) {
+        return Infinity; // Venues without pints will be sorted to the end
+      }
+      // Find the minimum price among the pints of the venue
+      return Math.min(...venue.pints.map(p => p.price));
+    };
 
+    const priceA = getCheapestPrice(a);
+    const priceB = getCheapestPrice(b);
+
+    return priceA - priceB;
+  });
+
+  setVenues(sortedVenues);
+};
+  const handleVenueSelect = useCallback((venue) => {
+  if (venue && venue.latitude && venue.longitude) {
+    setMapCenter([venue.latitude, venue.longitude]);
+    setMapZoom(SELECTED_VENUE_ZOOM); // using your existing constant
+    
+    // Optional: Scroll to the top of the page to see the map
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+}, [setMapCenter, setMapZoom]);
+  const handleDeletePint = async (pintIdToDelete) => { /* ... no changes here ... */ };
+  const handleGeolocationSuccess = useCallback((coords) => {
+  setMapCenter([coords.latitude, coords.longitude]);
+  setMapZoom(14); // A good zoom level for a local area
+}, [setMapCenter, setMapZoom]);
 
   // --- 3. PREPARE DATA FOR react-select ---
   // react-select expects options in the format: { value: 'suburb', label: 'Suburb' }
@@ -69,7 +99,7 @@ export default function VenuesPage() {
     suburbs.map(s => ({ value: s.suburb, label: s.suburb })),
     [suburbs]
   );
-  // --- END ---
+  
 
   const filteredVenues = venues.filter(venue => {
     const nameMatch = venue.name.toLowerCase().includes(searchTerm.toLowerCase());

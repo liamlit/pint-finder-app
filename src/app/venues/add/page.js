@@ -1,7 +1,9 @@
 // src/app/venues/add/page.js
 'use client';
 
-import { useState } from 'react';
+import { MELBOURNE_SUBURBS } from '@/data/suburbs';
+import { useState, useEffect } from 'react';
+import Select from 'react-select';
 import { supabase } from '../../../../supabaseClient'; // Verify this path
 import { useRouter } from 'next/navigation';
 import styles from '../../../styles/Form.module.css'; // <-- 1. Import the new CSS module
@@ -10,11 +12,12 @@ export default function AddVenuePage() {
   const [venueName, setVenueName] = useState('');
   const [address, setAddress] = useState('');
   const [priceValue, setPriceValue] = useState('');
-
+  const [suburb, setSuburb] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [isErrorMessage, setIsErrorMessage] = useState(false);
   const router = useRouter();
+
 
   const handleSubmit = async (e) => {
     // ... (your handleSubmit function logic remains exactly the same) ...
@@ -23,8 +26,8 @@ export default function AddVenuePage() {
     setMessage('');
     setIsErrorMessage(false);
 
-    if (!venueName.trim() || !address.trim() || !priceValue.trim()) {
-      setMessage('Please fill in all fields.');
+    if (!venueName.trim() || !address.trim() || !priceValue.trim() || !suburb) {
+      setMessage('Please fill in all fields, including the suburb.');
       setIsErrorMessage(true);
       setSubmitting(false);
       return;
@@ -55,6 +58,7 @@ export default function AddVenuePage() {
       const newVenue = {
         name: venueName.trim(),
         address: address.trim(),
+        suburb: suburb,
         price_value: numPrice, 
         latitude: parseFloat(lat),
         longitude: parseFloat(lon),
@@ -83,7 +87,8 @@ export default function AddVenuePage() {
     }
   };
 
-  // --- 2. UPDATE THE JSX WITH CLASSNAMES ---
+  const suburbOptions = MELBOURNE_SUBURBS.map(s => ({ value: s, label: s }));
+
   return (
     <div className={styles.formContainer}>
       <h1>Add New Venue</h1>
@@ -97,6 +102,27 @@ export default function AddVenuePage() {
             onChange={(e) => setVenueName(e.target.value)}
             required
             className={styles.inputField}
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="suburb" className={styles.label}>Suburb:</label>
+          <Select
+            instanceId="suburb-select"
+            id="suburb"
+            options={suburbOptions}
+            onChange={(selectedOption) => setSuburb(selectedOption ? selectedOption.value : '')}
+            value={suburbOptions.find(option => option.value === suburb)}
+            placeholder="Type or select a suburb..."
+            isClearable
+            required
+            // You might need to add some basic styling for react-select
+            styles={{
+              control: (base) => ({
+                ...base,
+                minHeight: '42px', // Match your other input fields
+              }),
+            }}
           />
         </div>
 
