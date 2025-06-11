@@ -7,7 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 // --- 1. IMPORT THE SHARED STYLES ---
 import styles from '@/app/venues/VenuesPage.module.css';
 
-export default function VenueCard({ venue, onVenueSelect, onDeletePint }) {
+export default function VenueCard({ venue, onVenueSelect, onDeletePint, onDeleteVenue }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getCheapestPint = () => {
@@ -104,8 +104,15 @@ export default function VenueCard({ venue, onVenueSelect, onDeletePint }) {
              </button>
         )}
       </div>
+      
 
-      <div style={{ textAlign: 'right', marginTop: '15px' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '15px' }}>
+        <button 
+            onClick={(e) => { e.stopPropagation(); onDeleteVenue(venue.id); }} 
+            className={`${styles.controlButton} ${styles.deleteButton}`}
+        >
+            Delete Venue
+        </button>
         <Link href={`/venues/${venue.id}/add-pint`} passHref>
           <button onClick={(e) => e.stopPropagation()} className={`${styles.controlButton} ${styles.addPintButton}`}>
             + Add Beer/Price
@@ -113,7 +120,7 @@ export default function VenueCard({ venue, onVenueSelect, onDeletePint }) {
         </Link>
       </div>
 
-      {/* --- 3. DELETE THE <style jsx> BLOCK --- */}
+      
     </div>
   );
 }

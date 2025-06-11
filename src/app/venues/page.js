@@ -87,7 +87,72 @@ export default function VenuesPage() {
     });
   }
 }, [setMapCenter, setMapZoom]);
-  const handleDeletePint = async (pintIdToDelete) => { /* ... no changes here ... */ };
+
+const handleDeleteVenue = async (venueIdToDelete) => {
+    if (!window.confirm("Are you sure you want to delete this venue? This will also delete all of its associated pints.")) {
+      return;
+    }
+
+    try {
+      // Supabase should be configured with cascading deletes on the 'pints' table 
+      // when a venue is deleted. If not, you would need to delete the pints first.
+      const { error } = await supabase
+        .from('venues')
+        .delete()
+        .eq('id', venueIdToDelete);
+
+      if (error) {
+        throw error;
+      }
+
+      // Update the local state to remove the deleted venue
+      setVenues(currentVenues => currentVenues.filter(venue => venue.id !== venueIdToDelete));
+
+      alert("Venue deleted successfully!");
+
+    } catch (error) {
+      console.error('Error deleting venue:', error);
+      alert(`Error deleting venue: ${error.message}`);
+    }
+  };
+
+ const handleDeletePint = async (pintIdToDelete) => {
+    if (!window.confirm("Are you sure you want to delete this pint?")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('pints')
+        .delete()
+        .eq('id', pintIdToDelete);
+
+      if (error) {
+        throw error;
+      }
+
+      setVenues(currentVenues => {
+        return currentVenues.map(venue => {
+          const pintIndex = venue.pints.findIndex(p => p.id === pintIdToDelete);
+          
+          if (pintIndex > -1) {
+            const updatedPints = [...venue.pints.slice(0, pintIndex), ...venue.pints.slice(pintIndex + 1)];
+            return { ...venue, pints: updatedPints };
+          }
+          
+          return venue;
+        });
+      });
+
+      alert("Pint deleted successfully!");
+
+    } catch (error) {
+      console.error('Error deleting pint:', error);
+      alert(`Error deleting pint: ${error.message}`);
+    }
+  };
+ 
+ 
   const handleGeolocationSuccess = useCallback((coords) => {
   setMapCenter([coords.latitude, coords.longitude]);
   setMapZoom(14); // A good zoom level for a local area
@@ -173,6 +238,7 @@ export default function VenuesPage() {
               venue={venue} 
               onVenueSelect={handleVenueSelect}
               onDeletePint={handleDeletePint} 
+              onDeleteVenue={handleDeleteVenue}
             />
           ))}
         </div>
