@@ -34,25 +34,22 @@
   font-style: italic;
 }
 
-/* src/app/venues/VenuesPage.module.css */
-
-/* ... your existing .venueCard, .venueName, etc. styles ... */
-
-/* NEW STYLES FOR CONTROLS */
+/* --- MODIFIED STYLES FOR CONTROLS --- */
 
 .controlsContainer {
   display: flex;
-  justify-content: center; /* This is changed to center */
   align-items: center;
   margin-bottom: 20px;
   flex-wrap: wrap; /* Allows controls to wrap on smaller screens */
-  gap: 20px;      /* Increased gap for better spacing */
+  gap: 20px;
+  padding: 0 16px; /* Added padding to prevent inputs from touching screen edges */
 }
 
 .filterGroup {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  flex-grow: 1; /* Allows this group to take up available space */
 }
 
 .searchInput {
@@ -60,13 +57,8 @@
   border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 1rem;
-}
-
-.searchInput {
-  padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 1rem;
+  flex-grow: 1; /* Makes the search inputs expand to fill the space */
+  min-width: 180px; /* Ensures inputs don't get too small before wrapping */
 }
 
 .searchInput:focus {
@@ -106,8 +98,6 @@
 .addButton:hover {
   background-color: #218838; /* Darker green on hover */
 }
-
-/* Add this to the end of src/app/venues/VenuesPage.module.css */
 
 .toggleButton {
   background: none;
