@@ -1,23 +1,67 @@
 // src/app/venues/add/page.js
 'use client';
 
-import { MELBOURNE_SUBURBS } from '@/data/suburbs';
-import { useState, useEffect } from 'react';
-import Select from 'react-select';
+import { useState, useCallback } from 'react';
 import { supabase } from '../../../../supabaseClient'; // Verify this path
 import { useRouter } from 'next/navigation';
 import styles from '../../../styles/Form.module.css'; // <-- 1. Import the new CSS module
+import AddressAutocomplete from '@/components/AddressAutocomplete';
+
+const debounce = (func, delay) => {
+  let timeoutId;
+  return (...args) => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      func(...args);
+    }, delay);
+  };
+};
 
 export default function AddVenuePage() {
   const [venueName, setVenueName] = useState('');
-  const [streetAddress, setStreetAddress] = useState('');
-  const [priceValue, setPriceValue] = useState('');
-  const [suburb, setSuburb] = useState('');
+  const [addressQuery, setAddressQuery] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [selectedAddress, setSelectedAddress] = useState(null);
+
   const [submitting, setSubmitting] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [message, setMessage] = useState('');
   const [isErrorMessage, setIsErrorMessage] = useState(false);
   const router = useRouter();
 
+  const fetchAddressSuggestions = async (query) => {
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const geocodingUrl = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&countrycodes=au&addressdetails=1&limit=5`;
+      const response = await fetch(geocodingUrl);
+      const data = await response.json();
+      setAddressSuggestions(data);
+    } catch (error) {
+      console.error("Error fetching address suggestions:", error);
+      setAddressSuggestions([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const debouncedFetch = useCallback(debounce(fetchAddressSuggestions, 500), []);
+
+  const handleAddressChange = (e) => {
+    const query = e.target.value;
+    setAddressQuery(query);
+    setSelectedAddress(null); // Clear selected address if user types again
+    debouncedFetch(query);
+  };
+
+  const handleSelectAddress = (address) => {
+    setSelectedAddress(address);
+    setAddressQuery(address.display_name);
+    setAddressSuggestions([]);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,44 +69,26 @@ export default function AddVenuePage() {
     setMessage('');
     setIsErrorMessage(false);
 
-     if (!venueName.trim() || !streetAddress.trim() || !priceValue.trim() || !suburb) {
-      setMessage('Please fill in all fields, including the suburb.');
+    if (!venueName.trim() || !selectedAddress) {
+      setMessage('Please enter a venue name and select a valid address from the suggestions.');
       setIsErrorMessage(true);
       setSubmitting(false);
       return;
     }
 
-    const numPrice = parseFloat(priceValue);
-    if (isNaN(numPrice) || numPrice <= 0) {
-      setMessage('Please enter a valid positive price.');
-      setIsErrorMessage(true);
-      setSubmitting(false);
-      return;
-    }
 
     try {
-      setMessage('Finding coordinates for the address...');
-      const fullAddress = `${streetAddress.trim()}, ${suburb}, VIC, Australia`;
-      
-      const geocodingUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`;
-
-      const geocodingResponse = await fetch(geocodingUrl);
-      const geocodingData = await geocodingResponse.json();
-
-      if (!geocodingResponse.ok || geocodingData.length === 0) {
-        throw new Error('Address not found. Please check the address and try again.');
-      }
-
-      const { lat, lon } = geocodingData[0];
       setMessage('Saving venue...');
+      
+      // Extract suburb. OSM data can be inconsistent, so we check multiple fields.
+      const suburb = selectedAddress.address.suburb || selectedAddress.address.city_district || selectedAddress.address.city || selectedAddress.address.town || 'Unknown';
 
       const newVenue = {
         name: venueName.trim(),
-        address: fullAddress,
+        address: selectedAddress.display_name,
         suburb: suburb,
-        price_value: numPrice, 
-        latitude: parseFloat(lat),
-        longitude: parseFloat(lon),
+        latitude: parseFloat(selectedAddress.lat),
+        longitude: parseFloat(selectedAddress.lon),
       };
 
       const { data, error } = await supabase
@@ -70,14 +96,15 @@ export default function AddVenuePage() {
         .insert([newVenue])
         .select();
 
-      if (error) throw error;
+      if (error) throw error;  
 
-      setMessage('Venue added successfully!');
+      const newVenueId = data[0].id;
+      setMessage('Venue added successfully! Redirecting to add a pint...');
       setIsErrorMessage(false);
 
       setTimeout(() => {
-        router.push('/venues'); 
-      }, 2000);
+        router.push(`/venues/${newVenueId}/add-pint`); 
+      }, 1500);
 
     } catch (error) {
       console.error('Submission error:', error.message);
@@ -88,7 +115,6 @@ export default function AddVenuePage() {
     }
   };
 
-  const suburbOptions = MELBOURNE_SUBURBS.map(s => ({ value: s, label: s }));
 
   return (
     <div className={styles.formContainer}>
@@ -107,58 +133,39 @@ export default function AddVenuePage() {
         </div>
 
         <div className={styles.formGroup}>
-          <label htmlFor="suburb" className={styles.label}>Suburb:</label>
-          <Select
-            instanceId="suburb-select"
-            id="suburb"
-            options={suburbOptions}
-            onChange={(selectedOption) => setSuburb(selectedOption ? selectedOption.value : '')}
-            value={suburbOptions.find(option => option.value === suburb)}
-            placeholder="Type or select a suburb..."
-            isClearable
-            required
-            // You might need to add some basic styling for react-select
-            styles={{
-              control: (base) => ({
-                ...base,
-                minHeight: '42px', // Match your other input fields
-              }),
-            }}
-          />
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="streetAddress" className={styles.label}>Street Address:</label>
+          <label htmlFor="address" className={styles.label}>Address:</label>
           <input
             type="text"
-            id="streetAddress"
-            value={streetAddress}
-            onChange={(e) => setStreetAddress(e.target.value)}
+            id="address"
+            value={addressQuery}
+            onChange={handleAddressChange}
             required
-            placeholder="e.g., 57 Swan Street"
+            placeholder="Start typing an address..."
             className={styles.inputField}
+            autoComplete="off"
           />
-      </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="priceValue" className={styles.label}>Average Price (e.g., 10.50):</label>
-          <input
-            type="number"
-            id="priceValue"
-            value={priceValue}
-            onChange={(e) => setPriceValue(e.target.value)}
-            step="0.01"
-            required
-            className={styles.inputField}
-          />
+          {isSearching && <p>Searching...</p>}
+          {addressSuggestions.length > 0 && (
+            <ul className={styles.suggestionsList}>
+              {addressSuggestions.map((suggestion) => (
+                <li
+                  key={suggestion.place_id}
+                  onClick={() => handleSelectAddress(suggestion)}
+                  className={styles.suggestionItem}
+                >
+                  {suggestion.display_name}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <button 
           type="submit" 
-          disabled={submitting}
+          disabled={submitting || !selectedAddress}
           className={styles.submitButton}
         >
-          {submitting ? 'Finding & Saving...' : 'Add Venue'}
+          {submitting ? 'Saving...' : 'Continue to Add Beer'}
         </button>
       </form>
       {message && (

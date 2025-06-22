@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import { supabase } from '../../../supabaseClient'; 
 import styles from './VenuesPage.module.css';
 import VenueCard from '@/components/VenueCard'; 
-import Select from 'react-select'; // <-- 2. IMPORT react-select
+
 
 const VenuesMap = dynamic(() => import('@/components/VenuesMap'), { ssr: false, loading: () => <p>Loading Map...</p> });
 
@@ -24,153 +24,89 @@ export default function VenuesPage() {
   const [error, setError] = useState(null);
   const [mapCenter, setMapCenter] = useState([DEFAULT_LATITUDE, DEFAULT_LONGITUDE]);
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [suburbs, setSuburbs] = useState([]);
-  const [selectedSuburb, setSelectedSuburb] = useState('');
+  const [nameSearchTerm, setNameSearchTerm] = useState('');
+  const [suburbSearchTerm, setSuburbSearchTerm] = useState('');
 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchVenues() {
       setLoading(true);
       setError(null);
-      const [venuesResponse, suburbsResponse] = await Promise.all([
-        supabase.from('venues').select('*, pints(*)'),
-        supabase.from('distinct_suburbs').select('suburb')
-      ]);
 
-      if (venuesResponse.error) {
-        console.error('Error fetching venues:', venuesResponse.error.message);
-        setError(venuesResponse.error.message);
+      const { data, error } = await supabase
+        .from('venues')
+        .select('*, pints(*)');
+
+      if (error) {
+        console.error('Error fetching venues:', error.message);
+        setError(error.message);
       } else {
-        setVenues(venuesResponse.data || []);
-        // ... (logic to set initial map center)
-      }
-      
-      if (suburbsResponse.error) {
-        console.error('Error fetching suburbs:', suburbsResponse.error.message);
-      } else {
-        setSuburbs(suburbsResponse.data || []);
+        setVenues(data || []);
       }
       setLoading(false);
     }
-    fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchVenues();
   }, []); 
-
-  // ... (handleSort, handleVenueSelect, handleDeletePint, handleGeolocationSuccess functions remain the same) ...
- const handleSort = () => {
-  const sortedVenues = [...venues].sort((a, b) => {
-    const getCheapestPrice = (venue) => {
-      if (!venue.pints || venue.pints.length === 0) {
-        return Infinity; // Venues without pints will be sorted to the end
-      }
-      // Find the minimum price among the pints of the venue
-      return Math.min(...venue.pints.map(p => p.price));
-    };
-
-    const priceA = getCheapestPrice(a);
-    const priceB = getCheapestPrice(b);
-
-    return priceA - priceB;
-  });
-
-  setVenues(sortedVenues);
-};
-  const handleVenueSelect = useCallback((venue) => {
-  if (venue && venue.latitude && venue.longitude) {
-    setMapCenter([venue.latitude, venue.longitude]);
-    setMapZoom(SELECTED_VENUE_ZOOM); // using your existing constant
-    
-    // Optional: Scroll to the top of the page to see the map
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
+      
+  const handleSort = () => {
+    const sortedVenues = [...venues].sort((a, b) => {
+      const getCheapestPrice = (venue) => {
+        if (!venue.pints || venue.pints.length === 0) return Infinity;
+        return Math.min(...venue.pints.map(p => p.price));
+      };
+      return getCheapestPrice(a) - getCheapestPrice(b);
     });
-  }
-}, [setMapCenter, setMapZoom]);
+    setVenues(sortedVenues);
+  };
 
-const handleDeleteVenue = async (venueIdToDelete) => {
-    if (!window.confirm("Are you sure you want to delete this venue? This will also delete all of its associated pints.")) {
-      return;
+  const handleVenueSelect = useCallback((venue) => {
+    if (venue && venue.latitude && venue.longitude) {
+      setMapCenter([venue.latitude, venue.longitude]);
+      setMapZoom(SELECTED_VENUE_ZOOM);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  }, []);
 
+  const handleDeleteVenue = async (venueIdToDelete) => {
+    if (!window.confirm("Are you sure you want to delete this venue and all its pints?")) return;
     try {
-      // Supabase should be configured with cascading deletes on the 'pints' table 
-      // when a venue is deleted. If not, you would need to delete the pints first.
-      const { error } = await supabase
-        .from('venues')
-        .delete()
-        .eq('id', venueIdToDelete);
-
-      if (error) {
-        throw error;
-      }
-
-      // Update the local state to remove the deleted venue
+      const { error } = await supabase.from('venues').delete().eq('id', venueIdToDelete);
+      if (error) throw error;
       setVenues(currentVenues => currentVenues.filter(venue => venue.id !== venueIdToDelete));
-
       alert("Venue deleted successfully!");
-
     } catch (error) {
       console.error('Error deleting venue:', error);
       alert(`Error deleting venue: ${error.message}`);
     }
   };
 
- const handleDeletePint = async (pintIdToDelete) => {
-    if (!window.confirm("Are you sure you want to delete this pint?")) {
-      return;
-    }
 
+  const handleDeletePint = async (pintIdToDelete) => {
+    if (!window.confirm("Are you sure you want to delete this pint?")) return;
     try {
-      const { error } = await supabase
-        .from('pints')
-        .delete()
-        .eq('id', pintIdToDelete);
-
-      if (error) {
-        throw error;
-      }
-
-      setVenues(currentVenues => {
-        return currentVenues.map(venue => {
-          const pintIndex = venue.pints.findIndex(p => p.id === pintIdToDelete);
-          
-          if (pintIndex > -1) {
-            const updatedPints = [...venue.pints.slice(0, pintIndex), ...venue.pints.slice(pintIndex + 1)];
-            return { ...venue, pints: updatedPints };
-          }
-          
-          return venue;
-        });
-      });
-
+      const { error } = await supabase.from('pints').delete().eq('id', pintIdToDelete);
+      if (error) throw error;
+      setVenues(currentVenues => currentVenues.map(venue => ({
+          ...venue,
+          pints: venue.pints.filter(p => p.id !== pintIdToDelete)
+      })));
       alert("Pint deleted successfully!");
-
     } catch (error) {
       console.error('Error deleting pint:', error);
       alert(`Error deleting pint: ${error.message}`);
     }
   };
- 
- 
-  const handleGeolocationSuccess = useCallback((coords) => {
-  setMapCenter([coords.latitude, coords.longitude]);
-  setMapZoom(14); // A good zoom level for a local area
-}, [setMapCenter, setMapZoom]);
 
-  // --- 3. PREPARE DATA FOR react-select ---
-  // react-select expects options in the format: { value: 'suburb', label: 'Suburb' }
-  const suburbOptions = useMemo(() => 
-    suburbs.map(s => ({ value: s.suburb, label: s.suburb })),
-    [suburbs]
-  );
-  
+  const handleGeolocationSuccess = useCallback((coords) => {
+    setMapCenter([coords.latitude, coords.longitude]);
+    setMapZoom(14);
+  }, []);
 
   const filteredVenues = venues.filter(venue => {
-    const nameMatch = venue.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const suburbMatch = selectedSuburb ? venue.suburb === selectedSuburb : true; 
+    const nameMatch = venue.name.toLowerCase().includes(nameSearchTerm.toLowerCase());
+    const suburbMatch = venue.suburb ? venue.suburb.toLowerCase().includes(suburbSearchTerm.toLowerCase()) : true;
     return nameMatch && suburbMatch;
   });
+
 
   if (loading) return <p>Loading venues...</p>;
   if (error) return <p>Error loading venues: {error}</p>;
@@ -188,36 +124,26 @@ const handleDeleteVenue = async (venueIdToDelete) => {
         />
       </div>
 
-      {/* --- 4. REPLACE <select> WITH <Select> COMPONENT --- */}
       <div className={styles.controlsContainer}>
         <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap', minWidth: '200px'}}>
           <input
             type="text"
             placeholder="Filter by name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={nameSearchTerm}
+            onChange={(e) => setNameSearchTerm(e.target.value)}
             className={styles.searchInput}
           />
-          {/* Using the new searchable Select component */}
-          <Select 
-            instanceId="suburb-select" // Important for SSR and accessibility
-            options={suburbOptions}
-            onChange={(selectedOption) => setSelectedSuburb(selectedOption ? selectedOption.value : '')}
-            value={suburbOptions.find(option => option.value === selectedSuburb)}
-            placeholder="Search or select a suburb..."
-            isClearable
-            styles={{
-              container: (base) => ({
-                ...base,
-                flex: 1,
-                minWidth: '200px',
-              }),
-            }}
+           <input
+            type="text"
+            placeholder="Filter by suburb..."
+            value={suburbSearchTerm}
+            onChange={(e) => setSuburbSearchTerm(e.target.value)}
+            className={styles.searchInput}
           />
         </div>
         
         <div className={styles.buttonGroup}>
-          <button onClick={() => handleSort('asc')} className={styles.controlButton}>
+          <button onClick={handleSort} className={styles.controlButton}>
             Sort by Price
           </button>
           <Link href="/venues/add" passHref>
@@ -227,9 +153,7 @@ const handleDeleteVenue = async (venueIdToDelete) => {
           </Link>
         </div>
       </div>
-      {/* --- END REPLACEMENT --- */}
-
-      {/* ... (Your existing venues list rendering logic remains the same) ... */}
+     
       {filteredVenues.length > 0 ? (
         <div>
           {filteredVenues.map(venue => (
