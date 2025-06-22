@@ -42,11 +42,24 @@
 
 .controlsContainer {
   display: flex;
-  justify-content: space-between;
+  justify-content: center; /* This is changed to center */
   align-items: center;
   margin-bottom: 20px;
   flex-wrap: wrap; /* Allows controls to wrap on smaller screens */
-  gap: 10px;      /* Adds space between items when they wrap */
+  gap: 20px;      /* Increased gap for better spacing */
+}
+
+.filterGroup {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.searchInput {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 1rem;
 }
 
 .searchInput {

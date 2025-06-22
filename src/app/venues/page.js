@@ -113,7 +113,7 @@ export default function VenuesPage() {
 
   return (
     <div>
-      <h1>PintFinder Venues</h1>
+     
       
       <div style={{ marginBottom: '20px' }}>
         <VenuesMap
@@ -125,7 +125,7 @@ export default function VenuesPage() {
       </div>
 
       <div className={styles.controlsContainer}>
-        <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap', minWidth: '200px'}}>
+        <div className={styles.filterGroup}>
           <input
             type="text"
             placeholder="Filter by name..."
